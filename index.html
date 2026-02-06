@@ -1,0 +1,950 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Kalkulator HPP Pro</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; }
+        .mobile-input { font-size: 16px !important; }
+        .mode-active { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; }
+        .alert-warning { animation: pulse 2s infinite; }
+        @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.7; } }
+        .tooltip { position: relative; }
+        .tooltip:hover::after { content: attr(data-tip); position: absolute; background: #333; color: white; padding: 5px 10px; border-radius: 5px; font-size: 12px; white-space: nowrap; bottom: 100%; left: 50%; transform: translateX(-50%); margin-bottom: 5px; z-index: 1000; }
+    </style>
+</head>
+<body class="bg-gradient-to-br from-blue-50 to-indigo-100 min-h-screen">
+
+    <!-- Header -->
+    <div class="bg-white shadow-lg sticky top-0 z-50">
+        <div class="max-w-7xl mx-auto px-3 sm:px-6 py-3 sm:py-4">
+            <h1 class="text-lg sm:text-2xl font-bold text-indigo-900">📊 Kalkulator HPP Pro</h1>
+            <p class="text-xs sm:text-sm text-gray-600">Hitung HPP akurat dengan deteksi kesalahan otomatis</p>
+        </div>
+    </div>
+
+    <!-- Main Menu Tabs -->
+    <div class="max-w-7xl mx-auto px-3 sm:px-6 mt-4 sm:mt-6">
+        <div class="bg-white rounded-xl shadow-lg p-2">
+            <div class="grid grid-cols-3 gap-2">
+                <button onclick="showMainMenu('calculator')" id="menuCalculator" class="mode-active py-2 sm:py-3 px-2 sm:px-4 rounded-lg font-semibold text-xs sm:text-base transition-all">
+                    🧮 Kalkulator
+                </button>
+                <button onclick="showMainMenu('products')" id="menuProducts" class="bg-gray-100 text-gray-700 py-2 sm:py-3 px-2 sm:px-4 rounded-lg font-semibold text-xs sm:text-base transition-all">
+                    🗂️ Produk
+                </button>
+                <button onclick="showMainMenu('cashflow')" id="menuCashflow" class="bg-gray-100 text-gray-700 py-2 sm:py-3 px-2 sm:px-4 rounded-lg font-semibold text-xs sm:text-base transition-all">
+                    📊 Cash Flow
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Mode Selection (inside Calculator) -->
+    <div id="calculatorSection" class="max-w-7xl mx-auto px-3 sm:px-6 mt-4">
+        <div class="bg-white rounded-xl shadow-lg p-4 sm:p-6">
+            <h3 class="font-bold text-gray-800 mb-3">Mode Perhitungan:</h3>
+            <div class="grid grid-cols-2 gap-3">
+                <button onclick="setMode('pcs')" id="modePcs" class="mode-active py-3 px-4 rounded-lg font-semibold transition-all">
+                    🔢 Per Pcs/Satuan
+                    <p class="text-xs mt-1 opacity-90">Untuk 1 produk jadi</p>
+                </button>
+                <button onclick="setMode('batch')" id="modeBatch" class="bg-gray-100 text-gray-700 py-3 px-4 rounded-lg font-semibold transition-all">
+                    📦 Per Batch/Resep
+                    <p class="text-xs mt-1 opacity-90">Untuk banyak produk sekaligus</p>
+                </button>
+            </div>
+            
+            <div id="batchInput" style="display: none;" class="mt-4">
+                <label class="block text-sm font-medium text-gray-700 mb-2">Jumlah jadi dari 1 resep/batch:</label>
+                <input type="number" id="batchQuantity" placeholder="Contoh: 50 pcs" value="1" onchange="calculate()" inputmode="numeric"
+                    class="mobile-input w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500">
+                <p class="text-xs text-gray-500 mt-1">💡 Misal: 1 resep menghasilkan 50 kue</p>
+            </div>
+        </div>
+    </div>
+
+    <div class="max-w-7xl mx-auto px-3 sm:px-6 py-4 sm:py-6">
+        
+        <!-- SECTION 1: CALCULATOR (existing content) -->
+        <div id="contentCalculator">
+        
+        <!-- Biaya Variabel -->
+        <div class="bg-white rounded-xl shadow-lg p-4 sm:p-6 mb-4 sm:mb-6">
+            <div class="flex justify-between items-center mb-3">
+                <h2 class="text-base sm:text-xl font-bold text-gray-800">📦 Biaya Variabel (Bahan Baku)</h2>
+                <span class="tooltip text-xs text-gray-500 cursor-help" data-tip="Bahan yang digunakan untuk membuat produk">ℹ️</span>
+            </div>
+            
+            <div id="materialsList" class="space-y-3"></div>
+            
+            <button onclick="addMaterial()" class="mt-3 w-full sm:w-auto px-4 py-2 text-indigo-600 hover:bg-indigo-50 rounded-lg font-medium border border-indigo-200">
+                ➕ Tambah Bahan
+            </button>
+
+            <div class="mt-4 p-4 bg-indigo-50 rounded-lg">
+                <p class="text-sm text-gray-700">Total Biaya Bahan Baku <span id="modeText">(per pcs)</span>:</p>
+                <p id="totalVariable" class="text-2xl font-bold text-indigo-600">Rp 0</p>
+            </div>
+        </div>
+
+        <!-- Biaya Tetap -->
+        <div class="bg-white rounded-xl shadow-lg p-4 sm:p-6 mb-4 sm:mb-6">
+            <div class="flex justify-between items-center mb-3">
+                <h2 class="text-base sm:text-xl font-bold text-gray-800">💰 Biaya Tetap Bulanan</h2>
+                <label class="flex items-center gap-2 text-sm">
+                    <input type="checkbox" id="useFixedCost" checked onchange="toggleFixedCost()" class="w-4 h-4">
+                    <span>Aktifkan</span>
+                </label>
+            </div>
+            
+            <div id="fixedCostSection">
+                <div id="fixedCostsList" class="space-y-3"></div>
+                
+                <button onclick="addFixedCost()" class="mt-3 w-full sm:w-auto px-4 py-2 text-indigo-600 hover:bg-indigo-50 rounded-lg font-medium border border-indigo-200">
+                    ➕ Tambah Biaya Tetap
+                </button>
+
+                <div class="mt-4 space-y-3">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">
+                            Target Produksi per Bulan:
+                            <span class="tooltip text-gray-500 cursor-help" data-tip="Berapa banyak produk yang dijual dalam sebulan">ℹ️</span>
+                        </label>
+                        <input type="number" id="productionTarget" placeholder="Contoh: 1000" onchange="calculate()" inputmode="numeric"
+                            class="mobile-input w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500">
+                    </div>
+                </div>
+
+                <div class="mt-4 p-4 bg-orange-50 rounded-lg">
+                    <p class="text-sm text-gray-700">Total Biaya Tetap per Bulan:</p>
+                    <p id="totalFixed" class="text-2xl font-bold text-orange-600">Rp 0</p>
+                    <p id="fixedPerUnit" class="text-sm text-gray-600 mt-1">Biaya tetap per produk: Rp 0</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Target Profit -->
+        <div class="bg-white rounded-xl shadow-lg p-4 sm:p-6 mb-4 sm:mb-6">
+            <h2 class="text-base sm:text-xl font-bold text-gray-800 mb-4">📈 Target Profit</h2>
+            
+            <div class="space-y-4">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">
+                        Margin Profit (%):
+                    </label>
+                    <input type="number" id="profitMargin" value="30" onchange="calculate()" inputmode="numeric"
+                        class="mobile-input w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500">
+                    <div class="flex gap-2 mt-2">
+                        <button onclick="setMargin(20)" class="text-xs px-3 py-1 bg-gray-100 rounded-lg">20%</button>
+                        <button onclick="setMargin(30)" class="text-xs px-3 py-1 bg-gray-100 rounded-lg">30%</button>
+                        <button onclick="setMargin(40)" class="text-xs px-3 py-1 bg-gray-100 rounded-lg">40%</button>
+                        <button onclick="setMargin(50)" class="text-xs px-3 py-1 bg-gray-100 rounded-lg">50%</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Alerts & Warnings -->
+        <div id="alertsSection"></div>
+
+        <!-- Hasil Perhitungan -->
+        <div class="bg-gradient-to-r from-indigo-600 to-purple-600 rounded-xl shadow-lg p-4 sm:p-6 text-white mb-4 sm:mb-6">
+            <h2 class="text-xl sm:text-2xl font-bold mb-4">📊 Hasil Perhitungan</h2>
+            
+            <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                <div class="bg-white/20 backdrop-blur-sm rounded-lg p-4">
+                    <p class="text-xs opacity-90">HPP per Produk</p>
+                    <p id="hppResult" class="text-2xl font-bold mt-1">Rp 0</p>
+                </div>
+                
+                <div class="bg-white/20 backdrop-blur-sm rounded-lg p-4">
+                    <p class="text-xs opacity-90">Harga Jual Saran</p>
+                    <p id="priceResult" class="text-2xl font-bold mt-1">Rp 0</p>
+                </div>
+                
+                <div class="bg-white/20 backdrop-blur-sm rounded-lg p-4">
+                    <p class="text-xs opacity-90">Profit per Produk</p>
+                    <p id="profitResult" class="text-2xl font-bold mt-1">Rp 0</p>
+                </div>
+            </div>
+
+            <div class="mt-4 p-4 bg-white/10 backdrop-blur-sm rounded-lg">
+                <p class="text-sm font-medium mb-2">💡 Analisis & Tips:</p>
+                <ul class="text-xs space-y-1 opacity-90" id="pricingTips">
+                    <li>• Masukkan data untuk analisis</li>
+                </ul>
+            </div>
+
+            <div class="mt-4 grid grid-cols-2 gap-3">
+                <div class="bg-white/10 p-3 rounded-lg">
+                    <p class="text-xs opacity-80">Break Even Point</p>
+                    <p id="bepResult" class="text-lg font-bold">0 unit</p>
+                </div>
+                <div class="bg-white/10 p-3 rounded-lg">
+                    <p class="text-xs opacity-80">Profit Bulanan (estimasi)</p>
+                    <p id="monthlyProfit" class="text-lg font-bold">Rp 0</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Simpan Produk Button -->
+        <div class="bg-white rounded-xl shadow-lg p-4 sm:p-6">
+            <button onclick="saveCurrentProduct()" class="w-full bg-green-600 text-white py-3 rounded-lg font-semibold hover:bg-green-700">
+                💾 Simpan Produk Ini
+            </button>
+        </div>
+
+        </div>
+        <!-- END CALCULATOR SECTION -->
+
+        <!-- SECTION 2: PRODUK TERSIMPAN -->
+        <div id="contentProducts" style="display: none;">
+            <div class="bg-white rounded-xl shadow-lg p-4 sm:p-6">
+                <h2 class="text-base sm:text-xl font-bold text-gray-800 mb-3">🗂️ Produk Tersimpan</h2>
+                <div id="savedProductsList" class="space-y-2"></div>
+                <button onclick="showMainMenu('calculator')" class="mt-3 w-full bg-indigo-600 text-white py-2 rounded-lg font-semibold hover:bg-indigo-700">
+                    ➕ Buat Produk Baru
+                </button>
+            </div>
+        </div>
+
+        <!-- SECTION 3: CASH FLOW HPP BULANAN -->
+        <div id="contentCashflow" style="display: none;">
+            
+            <!-- Input Transaksi -->
+            <div class="bg-white rounded-xl shadow-lg p-4 sm:p-6 mb-4">
+                <h2 class="text-base sm:text-xl font-bold text-gray-800 mb-4">💰 Input Transaksi Cash Flow</h2>
+                
+                <div class="space-y-3">
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">Tanggal</label>
+                            <input type="date" id="cfDate" 
+                                class="mobile-input w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">Kategori</label>
+                            <select id="cfCategory" 
+                                class="mobile-input w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500">
+                                <option value="">Pilih Kategori</option>
+                                <optgroup label="💰 Pemasukan">
+                                    <option value="penjualan">Penjualan Produk</option>
+                                    <option value="modal">Penambahan Modal</option>
+                                    <option value="lainnya-in">Pemasukan Lainnya</option>
+                                </optgroup>
+                                <optgroup label="💸 Pengeluaran">
+                                    <option value="bahan-baku">Pembelian Bahan Baku</option>
+                                    <option value="packaging">Kemasan & Packaging</option>
+                                    <option value="gaji">Gaji Karyawan</option>
+                                    <option value="sewa">Sewa Tempat</option>
+                                    <option value="utilitas">Listrik, Air, Gas</option>
+                                    <option value="transport">Transport & Pengiriman</option>
+                                    <option value="marketing">Marketing & Promosi</option>
+                                    <option value="lainnya-out">Pengeluaran Lainnya</option>
+                                </optgroup>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Deskripsi</label>
+                        <input type="text" id="cfDescription" placeholder="Contoh: Beli tepung 10kg" 
+                            class="mobile-input w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500">
+                    </div>
+
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Nominal (Rp)</label>
+                        <input type="number" id="cfAmount" placeholder="50000" inputmode="numeric"
+                            class="mobile-input w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500">
+                    </div>
+                </div>
+
+                <button onclick="addCashflow()" class="mt-4 w-full bg-green-600 text-white py-3 rounded-lg font-semibold hover:bg-green-700">
+                    ➕ Tambah Transaksi
+                </button>
+            </div>
+
+            <!-- Filter & Summary -->
+            <div class="bg-white rounded-xl shadow-lg p-4 sm:p-6 mb-4">
+                <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 mb-4">
+                    <h2 class="text-base sm:text-xl font-bold text-gray-800">📊 Laporan Cash Flow</h2>
+                    <div class="flex gap-2 w-full sm:w-auto">
+                        <select id="cfFilterMonth" onchange="filterCashflow()" 
+                            class="mobile-input flex-1 sm:flex-none px-3 py-2 border rounded-lg text-sm">
+                            <option value="">Semua Bulan</option>
+                        </select>
+                        <button onclick="exportCashflowExcel()" class="px-3 sm:px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 text-xs sm:text-sm whitespace-nowrap">
+                            📥 Excel
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Summary Cards -->
+                <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-4">
+                    <div class="bg-green-50 p-3 sm:p-4 rounded-lg border-l-4 border-green-500">
+                        <p class="text-xs sm:text-sm text-gray-600">Total Pemasukan</p>
+                        <p id="cfTotalIn" class="text-lg sm:text-2xl font-bold text-green-600">Rp 0</p>
+                    </div>
+                    <div class="bg-red-50 p-3 sm:p-4 rounded-lg border-l-4 border-red-500">
+                        <p class="text-xs sm:text-sm text-gray-600">Total Pengeluaran</p>
+                        <p id="cfTotalOut" class="text-lg sm:text-2xl font-bold text-red-600">Rp 0</p>
+                    </div>
+                    <div class="bg-blue-50 p-3 sm:p-4 rounded-lg border-l-4 border-blue-500">
+                        <p class="text-xs sm:text-sm text-gray-600">Saldo</p>
+                        <p id="cfBalance" class="text-lg sm:text-2xl font-bold text-blue-600">Rp 0</p>
+                    </div>
+                </div>
+
+                <!-- Table -->
+                <div class="overflow-x-auto">
+                    <table class="w-full min-w-[600px]">
+                        <thead>
+                            <tr class="bg-indigo-50">
+                                <th class="px-2 sm:px-4 py-2 text-left text-xs sm:text-sm font-semibold">Tanggal</th>
+                                <th class="px-2 sm:px-4 py-2 text-left text-xs sm:text-sm font-semibold">Kategori</th>
+                                <th class="px-2 sm:px-4 py-2 text-left text-xs sm:text-sm font-semibold">Deskripsi</th>
+                                <th class="px-2 sm:px-4 py-2 text-right text-xs sm:text-sm font-semibold">Pemasukan</th>
+                                <th class="px-2 sm:px-4 py-2 text-right text-xs sm:text-sm font-semibold">Pengeluaran</th>
+                                <th class="px-2 sm:px-4 py-2 text-center text-xs sm:text-sm font-semibold">Aksi</th>
+                            </tr>
+                        </thead>
+                        <tbody id="cfTable">
+                            <tr>
+                                <td colspan="6" class="px-4 py-8 text-center text-gray-500 text-xs sm:text-sm">
+                                    Belum ada transaksi. Tambahkan transaksi pertama!
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Breakdown by Category -->
+            <div class="bg-white rounded-xl shadow-lg p-4 sm:p-6">
+                <h3 class="text-base sm:text-lg font-bold text-gray-800 mb-3">📑 Breakdown Per Kategori</h3>
+                <div id="cfBreakdown" class="space-y-2"></div>
+            </div>
+
+        </div>
+
+    </div>
+
+    <script>
+        let materials = [];
+        let fixedCosts = [];
+        let currentMode = 'pcs';
+        let savedProducts = [];
+        let cashflows = [];
+        let currentMainMenu = 'calculator';
+
+        document.addEventListener('DOMContentLoaded', function() {
+            const today = new Date().toISOString().split('T')[0];
+            document.getElementById('cfDate').value = today;
+            
+            addMaterial();
+            addFixedCost();
+            loadSavedProducts();
+            loadCashflows();
+            populateMonthFilter();
+        });
+
+        function showMainMenu(menu) {
+            currentMainMenu = menu;
+            
+            // Hide all sections
+            document.getElementById('contentCalculator').style.display = 'none';
+            document.getElementById('contentProducts').style.display = 'none';
+            document.getElementById('contentCashflow').style.display = 'none';
+            document.getElementById('calculatorSection').style.display = 'none';
+            
+            // Show selected section
+            if (menu === 'calculator') {
+                document.getElementById('contentCalculator').style.display = 'block';
+                document.getElementById('calculatorSection').style.display = 'block';
+            } else if (menu === 'products') {
+                document.getElementById('contentProducts').style.display = 'block';
+                renderSavedProducts();
+            } else if (menu === 'cashflow') {
+                document.getElementById('contentCashflow').style.display = 'block';
+                renderCashflow();
+            }
+            
+            // Update menu buttons
+            document.getElementById('menuCalculator').className = menu === 'calculator' ? 'mode-active py-2 sm:py-3 px-2 sm:px-4 rounded-lg font-semibold text-xs sm:text-base transition-all' : 'bg-gray-100 text-gray-700 py-2 sm:py-3 px-2 sm:px-4 rounded-lg font-semibold text-xs sm:text-base transition-all';
+            document.getElementById('menuProducts').className = menu === 'products' ? 'mode-active py-2 sm:py-3 px-2 sm:px-4 rounded-lg font-semibold text-xs sm:text-base transition-all' : 'bg-gray-100 text-gray-700 py-2 sm:py-3 px-2 sm:px-4 rounded-lg font-semibold text-xs sm:text-base transition-all';
+            document.getElementById('menuCashflow').className = menu === 'cashflow' ? 'mode-active py-2 sm:py-3 px-2 sm:px-4 rounded-lg font-semibold text-xs sm:text-base transition-all' : 'bg-gray-100 text-gray-700 py-2 sm:py-3 px-2 sm:px-4 rounded-lg font-semibold text-xs sm:text-base transition-all';
+        }
+
+        function setMode(mode) {
+            currentMode = mode;
+            document.getElementById('modePcs').className = mode === 'pcs' ? 'mode-active py-3 px-4 rounded-lg font-semibold transition-all' : 'bg-gray-100 text-gray-700 py-3 px-4 rounded-lg font-semibold transition-all';
+            document.getElementById('modeBatch').className = mode === 'batch' ? 'mode-active py-3 px-4 rounded-lg font-semibold transition-all' : 'bg-gray-100 text-gray-700 py-3 px-4 rounded-lg font-semibold transition-all';
+            document.getElementById('batchInput').style.display = mode === 'batch' ? 'block' : 'none';
+            document.getElementById('modeText').textContent = mode === 'pcs' ? '(per pcs)' : '(per batch)';
+            calculate();
+        }
+
+        function setMargin(percent) {
+            document.getElementById('profitMargin').value = percent;
+            calculate();
+        }
+
+        function toggleFixedCost() {
+            const checked = document.getElementById('useFixedCost').checked;
+            document.getElementById('fixedCostSection').style.display = checked ? 'block' : 'none';
+            calculate();
+        }
+
+        function addMaterial() {
+            const id = Date.now();
+            materials.push({ id, name: '', quantity: '', unit: 'g', buyPrice: '', buyUnit: 'g', buyQuantity: '' });
+            renderMaterials();
+        }
+
+        function removeMaterial(id) {
+            materials = materials.filter(m => m.id !== id);
+            renderMaterials();
+            calculate();
+        }
+
+        function renderMaterials() {
+            const container = document.getElementById('materialsList');
+            container.innerHTML = materials.map(m => `
+                <div class="border border-gray-200 rounded-lg p-3 space-y-2">
+                    <input type="text" placeholder="Nama Bahan (misal: Tepung Terigu)" value="${m.name}" 
+                        onchange="updateMaterial(${m.id}, 'name', this.value)"
+                        class="mobile-input w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:outline-none">
+                    
+                    <div class="bg-gray-50 p-2 rounded">
+                        <p class="text-xs font-medium text-gray-600 mb-2">🛒 Info Pembelian:</p>
+                        <div class="grid grid-cols-2 gap-2">
+                            <div>
+                                <label class="text-xs text-gray-600">Beli berapa:</label>
+                                <input type="number" placeholder="250" value="${m.buyQuantity}" inputmode="numeric"
+                                    onchange="updateMaterial(${m.id}, 'buyQuantity', this.value)"
+                                    class="mobile-input w-full px-2 py-1 text-sm border rounded focus:ring-1 focus:ring-indigo-500">
+                            </div>
+                            <div>
+                                <label class="text-xs text-gray-600">Satuan:</label>
+                                <select onchange="updateMaterial(${m.id}, 'buyUnit', this.value)" 
+                                    class="mobile-input w-full px-2 py-1 text-sm border rounded focus:ring-1 focus:ring-indigo-500">
+                                    <option value="g" ${m.buyUnit === 'g' ? 'selected' : ''}>gram</option>
+                                    <option value="kg" ${m.buyUnit === 'kg' ? 'selected' : ''}>kg</option>
+                                    <option value="ml" ${m.buyUnit === 'ml' ? 'selected' : ''}>ml</option>
+                                    <option value="liter" ${m.buyUnit === 'liter' ? 'selected' : ''}>liter</option>
+                                    <option value="pcs" ${m.buyUnit === 'pcs' ? 'selected' : ''}>pcs</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="mt-2">
+                            <label class="text-xs text-gray-600">Harga beli total:</label>
+                            <input type="number" placeholder="25000" value="${m.buyPrice}" inputmode="numeric"
+                                onchange="updateMaterial(${m.id}, 'buyPrice', this.value)"
+                                class="mobile-input w-full px-2 py-1 text-sm border rounded focus:ring-1 focus:ring-indigo-500">
+                        </div>
+                    </div>
+
+                    <div class="bg-blue-50 p-2 rounded">
+                        <p class="text-xs font-medium text-gray-600 mb-2">📝 Pemakaian untuk ${currentMode === 'batch' ? 'per batch' : 'per produk'}:</p>
+                        <div class="flex gap-2">
+                            <div class="flex-1">
+                                <label class="text-xs text-gray-600">Pakai berapa:</label>
+                                <input type="number" placeholder="50" value="${m.quantity}" inputmode="numeric"
+                                    onchange="updateMaterial(${m.id}, 'quantity', this.value)"
+                                    class="mobile-input w-full px-2 py-1 text-sm border rounded focus:ring-1 focus:ring-indigo-500">
+                            </div>
+                            <div class="w-24">
+                                <label class="text-xs text-gray-600">Satuan:</label>
+                                <select onchange="updateMaterial(${m.id}, 'unit', this.value)" 
+                                    class="mobile-input w-full px-2 py-1 text-sm border rounded focus:ring-1 focus:ring-indigo-500">
+                                    <option value="g" ${m.unit === 'g' ? 'selected' : ''}>gram</option>
+                                    <option value="kg" ${m.unit === 'kg' ? 'selected' : ''}>kg</option>
+                                    <option value="ml" ${m.unit === 'ml' ? 'selected' : ''}>ml</option>
+                                    <option value="liter" ${m.unit === 'liter' ? 'selected' : ''}>liter</option>
+                                    <option value="pcs" ${m.unit === 'pcs' ? 'selected' : ''}>pcs</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="flex justify-between items-center pt-2">
+                        <p class="text-xs font-medium text-green-700" id="cost-${m.id}">Biaya: Rp 0</p>
+                        <button onclick="removeMaterial(${m.id})" class="text-red-600 hover:bg-red-50 px-3 py-1 rounded text-sm">
+                            🗑️ Hapus
+                        </button>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function updateMaterial(id, field, value) {
+            const material = materials.find(m => m.id === id);
+            if (material) {
+                material[field] = value;
+                calculate();
+            }
+        }
+
+        function addFixedCost() {
+            const id = Date.now();
+            fixedCosts.push({ id, name: '', amount: '' });
+            renderFixedCosts();
+        }
+
+        function removeFixedCost(id) {
+            fixedCosts = fixedCosts.filter(f => f.id !== id);
+            renderFixedCosts();
+            calculate();
+        }
+
+        function renderFixedCosts() {
+            const container = document.getElementById('fixedCostsList');
+            const presets = [
+                { name: 'Sewa Tempat', placeholder: '2000000' },
+                { name: 'Listrik & Air', placeholder: '500000' },
+                { name: 'Gaji Karyawan', placeholder: '3000000' },
+                { name: 'Internet & Admin', placeholder: '300000' }
+            ];
+            
+            container.innerHTML = fixedCosts.map((f, idx) => `
+                <div class="flex gap-2 items-center">
+                    <input type="text" placeholder="${presets[idx]?.name || 'Nama Biaya'}" value="${f.name}" 
+                        onchange="updateFixedCost(${f.id}, 'name', this.value)"
+                        class="mobile-input flex-1 px-3 py-2 text-sm border rounded-lg focus:ring-2 focus:ring-indigo-500">
+                    <input type="number" placeholder="${presets[idx]?.placeholder || '100000'}" value="${f.amount}" inputmode="numeric"
+                        onchange="updateFixedCost(${f.id}, 'amount', this.value)"
+                        class="mobile-input w-32 px-3 py-2 text-sm border rounded-lg focus:ring-2 focus:ring-indigo-500">
+                    <button onclick="removeFixedCost(${f.id})" class="p-2 text-red-600 hover:bg-red-50 rounded-lg">🗑️</button>
+                </div>
+            `).join('');
+        }
+
+        function updateFixedCost(id, field, value) {
+            const cost = fixedCosts.find(f => f.id === id);
+            if (cost) {
+                cost[field] = value;
+                calculate();
+            }
+        }
+
+        function convertUnit(value, fromUnit, toUnit) {
+            const conversions = {
+                'kg': 1000, 'g': 1,
+                'liter': 1000, 'ml': 1,
+                'pcs': 1
+            };
+            
+            if (fromUnit === toUnit) return value;
+            if ((fromUnit === 'kg' || fromUnit === 'g') && (toUnit === 'kg' || toUnit === 'g')) {
+                return (value * conversions[fromUnit]) / conversions[toUnit];
+            }
+            if ((fromUnit === 'liter' || fromUnit === 'ml') && (toUnit === 'liter' || toUnit === 'ml')) {
+                return (value * conversions[fromUnit]) / conversions[toUnit];
+            }
+            return value;
+        }
+
+        function calculate() {
+            const batchQty = currentMode === 'batch' ? (parseFloat(document.getElementById('batchQuantity').value) || 1) : 1;
+            let totalVariable = 0;
+            let warnings = [];
+
+            materials.forEach(m => {
+                const buyQty = parseFloat(m.buyQuantity) || 0;
+                const buyPrice = parseFloat(m.buyPrice) || 0;
+                const useQty = parseFloat(m.quantity) || 0;
+
+                if (buyQty > 0 && buyPrice > 0 && useQty > 0) {
+                    const convertedUseQty = convertUnit(useQty, m.unit, m.buyUnit);
+                    const pricePerUnit = buyPrice / buyQty;
+                    const cost = pricePerUnit * convertedUseQty;
+                    const costPerPcs = cost / batchQty;
+                    
+                    totalVariable += cost / batchQty;
+                    
+                    const costEl = document.getElementById(`cost-${m.id}`);
+                    if (costEl) {
+                        costEl.textContent = `Biaya ${currentMode === 'batch' ? 'total' : 'per pcs'}: Rp ${cost.toLocaleString('id-ID', {maximumFractionDigits: 0})}`;
+                    }
+
+                    if (convertedUseQty > buyQty) {
+                        warnings.push(`⚠️ ${m.name}: Pemakaian (${useQty} ${m.unit}) lebih besar dari pembelian (${buyQty} ${m.buyUnit})`);
+                    }
+                }
+            });
+
+            let totalFixed = 0;
+            let fixedPerUnit = 0;
+            
+            if (document.getElementById('useFixedCost').checked) {
+                totalFixed = fixedCosts.reduce((sum, f) => sum + (parseFloat(f.amount) || 0), 0);
+                const target = parseFloat(document.getElementById('productionTarget').value) || 1;
+                fixedPerUnit = totalFixed / target;
+
+                if (target < 10) warnings.push('⚠️ Target produksi terlalu rendah (< 10 unit/bulan)');
+                if (target > 100000) warnings.push('⚠️ Target produksi sangat tinggi, pastikan realistis');
+                if (totalFixed > 50000000) warnings.push('⚠️ Biaya tetap sangat besar, periksa kembali');
+            }
+
+            const profitMargin = parseFloat(document.getElementById('profitMargin').value) || 30;
+            const hpp = totalVariable + fixedPerUnit;
+            const suggestedPrice = hpp / (1 - profitMargin / 100);
+            const profit = suggestedPrice - hpp;
+
+            document.getElementById('totalVariable').textContent = 'Rp ' + Math.round(totalVariable).toLocaleString('id-ID');
+            document.getElementById('totalFixed').textContent = 'Rp ' + Math.round(totalFixed).toLocaleString('id-ID');
+            document.getElementById('fixedPerUnit').textContent = 'Biaya tetap per produk: Rp ' + Math.round(fixedPerUnit).toLocaleString('id-ID');
+            document.getElementById('hppResult').textContent = 'Rp ' + Math.round(hpp).toLocaleString('id-ID');
+            document.getElementById('priceResult').textContent = 'Rp ' + Math.round(suggestedPrice).toLocaleString('id-ID');
+            document.getElementById('profitResult').textContent = 'Rp ' + Math.round(profit).toLocaleString('id-ID');
+
+            const target = parseFloat(document.getElementById('productionTarget').value) || 0;
+            const monthlyProfit = profit * target;
+            const bep = totalFixed / profit;
+
+            document.getElementById('monthlyProfit').textContent = 'Rp ' + Math.round(monthlyProfit).toLocaleString('id-ID');
+            document.getElementById('bepResult').textContent = Math.ceil(bep) + ' unit';
+
+            let tips = [];
+            tips.push(`• Harga minimal: Rp ${Math.round(hpp).toLocaleString('id-ID')} (impas)`);
+            tips.push(`• Margin profit saat ini: ${profitMargin}%`);
+            
+            if (profitMargin < 20) {
+                tips.push(`• ⚠️ Margin terlalu tipis! Risiko rugi tinggi`);
+                warnings.push('🚨 Margin profit < 20% sangat berisiko');
+            } else if (profitMargin > 60) {
+                tips.push(`• 💡 Margin tinggi, pastikan harga tetap kompetitif`);
+            }
+
+            if (bep > target && target > 0) {
+                warnings.push(`🚨 Target penjualan (${target}) di bawah BEP (${Math.ceil(bep)}) - akan RUGI!`);
+            }
+
+            tips.push(`• Break Even Point: ${Math.ceil(bep)} unit/bulan`);
+            tips.push(`• Estimasi profit bulanan: Rp ${Math.round(monthlyProfit).toLocaleString('id-ID')}`);
+
+            document.getElementById('pricingTips').innerHTML = tips.map(t => `<li>${t}</li>`).join('');
+
+            if (warnings.length > 0) {
+                document.getElementById('alertsSection').innerHTML = `
+                    <div class="alert-warning bg-yellow-50 border-l-4 border-yellow-400 p-4 mb-4 rounded-lg">
+                        <p class="font-bold text-yellow-800 mb-2">⚠️ Peringatan:</p>
+                        ${warnings.map(w => `<p class="text-sm text-yellow-700">${w}</p>`).join('')}
+                    </div>
+                `;
+            } else {
+                document.getElementById('alertsSection').innerHTML = `
+                    <div class="bg-green-50 border-l-4 border-green-400 p-4 mb-4 rounded-lg">
+                        <p class="font-bold text-green-800">✅ Perhitungan Valid</p>
+                        <p class="text-sm text-green-700">Tidak ada masalah terdeteksi</p>
+                    </div>
+                `;
+            }
+        }
+
+        function saveCurrentProduct() {
+            const name = prompt('Nama produk:');
+            if (!name) return;
+
+            const product = {
+                id: Date.now(),
+                name,
+                mode: currentMode,
+                materials: JSON.parse(JSON.stringify(materials)),
+                fixedCosts: JSON.parse(JSON.stringify(fixedCosts)),
+                settings: {
+                    profitMargin: document.getElementById('profitMargin').value,
+                    productionTarget: document.getElementById('productionTarget').value,
+                    batchQuantity: document.getElementById('batchQuantity').value,
+                    useFixedCost: document.getElementById('useFixedCost').checked
+                }
+            };
+
+            savedProducts.push(product);
+            localStorage.setItem('savedProducts', JSON.stringify(savedProducts));
+            loadSavedProducts();
+            alert('✅ Produk "' + name + '" berhasil disimpan!');
+        }
+
+        function loadSavedProducts() {
+            const saved = localStorage.getItem('savedProducts');
+            if (saved) {
+                savedProducts = JSON.parse(saved);
+            }
+            renderSavedProducts();
+        }
+
+        function renderSavedProducts() {
+            const container = document.getElementById('savedProductsList');
+            if (savedProducts.length === 0) {
+                container.innerHTML = '<p class="text-sm text-gray-500 text-center py-4">Belum ada produk tersimpan</p>';
+                return;
+            }
+
+            container.innerHTML = savedProducts.map(p => `
+                <div class="flex justify-between items-center p-3 bg-gray-50 rounded-lg">
+                    <div>
+                        <p class="font-medium text-gray-800">${p.name}</p>
+                        <p class="text-xs text-gray-500">Mode: ${p.mode === 'pcs' ? 'Per Pcs' : 'Per Batch'}</p>
+                    </div>
+                    <div class="flex gap-2">
+                        <button onclick="loadProduct(${p.id})" class="text-xs px-3 py-1 bg-indigo-600 text-white rounded hover:bg-indigo-700">
+                            📂 Muat
+                        </button>
+                        <button onclick="deleteProduct(${p.id})" class="text-xs px-3 py-1 bg-red-600 text-white rounded hover:bg-red-700">
+                            🗑️
+                        </button>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function loadProduct(id) {
+            const product = savedProducts.find(p => p.id === id);
+            if (!product) return;
+
+            showMainMenu('calculator');
+            setMode(product.mode);
+            materials = JSON.parse(JSON.stringify(product.materials));
+            fixedCosts = JSON.parse(JSON.stringify(product.fixedCosts));
+            
+            document.getElementById('profitMargin').value = product.settings.profitMargin;
+            document.getElementById('productionTarget').value = product.settings.productionTarget;
+            document.getElementById('batchQuantity').value = product.settings.batchQuantity;
+            document.getElementById('useFixedCost').checked = product.settings.useFixedCost;
+
+            renderMaterials();
+            renderFixedCosts();
+            toggleFixedCost();
+            calculate();
+
+            alert('✅ Produk "' + product.name + '" berhasil dimuat!');
+        }
+
+        function deleteProduct(id) {
+            if (!confirm('Hapus produk ini?')) return;
+            savedProducts = savedProducts.filter(p => p.id !== id);
+            localStorage.setItem('savedProducts', JSON.stringify(savedProducts));
+            renderSavedProducts();
+        }
+
+        // Cash Flow Functions
+        function addCashflow() {
+            const date = document.getElementById('cfDate').value;
+            const category = document.getElementById('cfCategory').value;
+            const description = document.getElementById('cfDescription').value;
+            const amount = parseFloat(document.getElementById('cfAmount').value);
+
+            if (!date || !category || !description || !amount) {
+                alert('Mohon lengkapi semua field!');
+                return;
+            }
+
+            const isIncome = ['penjualan', 'modal', 'lainnya-in'].includes(category);
+
+            cashflows.push({
+                id: Date.now(),
+                date,
+                category,
+                description,
+                amount,
+                type: isIncome ? 'in' : 'out'
+            });
+
+            // Reset form
+            document.getElementById('cfDescription').value = '';
+            document.getElementById('cfAmount').value = '';
+            document.getElementById('cfCategory').value = '';
+
+            saveCashflows();
+            renderCashflow();
+        }
+
+        function loadCashflows() {
+            const saved = localStorage.getItem('cashflows');
+            if (saved) {
+                cashflows = JSON.parse(saved);
+            }
+        }
+
+        function saveCashflows() {
+            localStorage.setItem('cashflows', JSON.stringify(cashflows));
+        }
+
+        function filterCashflow() {
+            renderCashflow();
+        }
+
+        function populateMonthFilter() {
+            const select = document.getElementById('cfFilterMonth');
+            const months = {};
+            
+            cashflows.forEach(cf => {
+                const month = cf.date.substring(0, 7);
+                months[month] = true;
+            });
+
+            const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des'];
+            Object.keys(months).sort().reverse().forEach(m => {
+                const [year, month] = m.split('-');
+                const option = document.createElement('option');
+                option.value = m;
+                option.textContent = `${monthNames[parseInt(month)-1]} ${year}`;
+                select.appendChild(option);
+            });
+        }
+
+        function renderCashflow() {
+            const filterMonth = document.getElementById('cfFilterMonth').value;
+            let filtered = cashflows;
+
+            if (filterMonth) {
+                filtered = cashflows.filter(cf => cf.date.startsWith(filterMonth));
+            }
+
+            // Sort by date desc
+            filtered.sort((a, b) => new Date(b.date) - new Date(a.date));
+
+            const tbody = document.getElementById('cfTable');
+            
+            if (filtered.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="6" class="px-4 py-8 text-center text-gray-500 text-xs sm:text-sm">Tidak ada transaksi</td></tr>';
+            } else {
+                tbody.innerHTML = filtered.map(cf => {
+                    const catLabel = {
+                        'penjualan': '💰 Penjualan',
+                        'modal': '💵 Modal',
+                        'lainnya-in': '💸 Lainnya',
+                        'bahan-baku': '🛒 Bahan Baku',
+                        'packaging': '📦 Packaging',
+                        'gaji': '👥 Gaji',
+                        'sewa': '🏠 Sewa',
+                        'utilitas': '⚡ Utilitas',
+                        'transport': '🚗 Transport',
+                        'marketing': '📣 Marketing',
+                        'lainnya-out': '💳 Lainnya'
+                    }[cf.category];
+
+                    return `
+                        <tr class="border-b hover:bg-gray-50">
+                            <td class="px-2 sm:px-4 py-2 text-xs sm:text-sm">${cf.date}</td>
+                            <td class="px-2 sm:px-4 py-2 text-xs sm:text-sm">${catLabel}</td>
+                            <td class="px-2 sm:px-4 py-2 text-xs sm:text-sm">${cf.description}</td>
+                            <td class="px-2 sm:px-4 py-2 text-xs sm:text-sm text-right ${cf.type === 'in' ? 'text-green-600 font-semibold' : ''}">
+                                ${cf.type === 'in' ? 'Rp ' + cf.amount.toLocaleString('id-ID') : '-'}
+                            </td>
+                            <td class="px-2 sm:px-4 py-2 text-xs sm:text-sm text-right ${cf.type === 'out' ? 'text-red-600 font-semibold' : ''}">
+                                ${cf.type === 'out' ? 'Rp ' + cf.amount.toLocaleString('id-ID') : '-'}
+                            </td>
+                            <td class="px-2 sm:px-4 py-2 text-center">
+                                <button onclick="deleteCashflow(${cf.id})" class="text-red-600 hover:bg-red-50 p-1 rounded text-xs">
+                                    🗑️
+                                </button>
+                            </td>
+                        </tr>
+                    `;
+                }).join('');
+            }
+
+            // Calculate summary
+            const totalIn = filtered.filter(cf => cf.type === 'in').reduce((sum, cf) => sum + cf.amount, 0);
+            const totalOut = filtered.filter(cf => cf.type === 'out').reduce((sum, cf) => sum + cf.amount, 0);
+            const balance = totalIn - totalOut;
+
+            document.getElementById('cfTotalIn').textContent = 'Rp ' + totalIn.toLocaleString('id-ID');
+            document.getElementById('cfTotalOut').textContent = 'Rp ' + totalOut.toLocaleString('id-ID');
+            document.getElementById('cfBalance').textContent = 'Rp ' + balance.toLocaleString('id-ID');
+            document.getElementById('cfBalance').className = 'text-lg sm:text-2xl font-bold ' + (balance >= 0 ? 'text-green-600' : 'text-red-600');
+
+            // Breakdown by category
+            const breakdown = {};
+            filtered.forEach(cf => {
+                if (!breakdown[cf.category]) {
+                    breakdown[cf.category] = 0;
+                }
+                breakdown[cf.category] += cf.amount;
+            });
+
+            const breakdownContainer = document.getElementById('cfBreakdown');
+            const catLabels = {
+                'penjualan': '💰 Penjualan',
+                'modal': '💵 Modal',
+                'lainnya-in': '💸 Pemasukan Lainnya',
+                'bahan-baku': '🛒 Bahan Baku',
+                'packaging': '📦 Packaging',
+                'gaji': '👥 Gaji',
+                'sewa': '🏠 Sewa',
+                'utilitas': '⚡ Utilitas',
+                'transport': '🚗 Transport',
+                'marketing': '📣 Marketing',
+                'lainnya-out': '💳 Pengeluaran Lainnya'
+            };
+
+            breakdownContainer.innerHTML = Object.keys(breakdown).map(cat => `
+                <div class="flex justify-between items-center p-2 bg-gray-50 rounded">
+                    <span class="text-xs sm:text-sm">${catLabels[cat]}</span>
+                    <span class="text-xs sm:text-sm font-semibold">Rp ${breakdown[cat].toLocaleString('id-ID')}</span>
+                </div>
+            `).join('');
+        }
+
+        function deleteCashflow(id) {
+            if (!confirm('Hapus transaksi ini?')) return;
+            cashflows = cashflows.filter(cf => cf.id !== id);
+            saveCashflows();
+            renderCashflow();
+            populateMonthFilter();
+        }
+
+        function exportCashflowExcel() {
+            if (cashflows.length === 0) {
+                alert('Tidak ada data untuk di-export!');
+                return;
+            }
+
+            const filterMonth = document.getElementById('cfFilterMonth').value;
+            let filtered = cashflows;
+            if (filterMonth) {
+                filtered = cashflows.filter(cf => cf.date.startsWith(filterMonth));
+            }
+
+            let csv = 'Tanggal,Kategori,Deskripsi,Pemasukan,Pengeluaran\n';
+            
+            filtered.sort((a, b) => new Date(a.date) - new Date(b.date)).forEach(cf => {
+                const catLabel = {
+                    'penjualan': 'Penjualan',
+                    'modal': 'Modal',
+                    'lainnya-in': 'Pemasukan Lainnya',
+                    'bahan-baku': 'Bahan Baku',
+                    'packaging': 'Packaging',
+                    'gaji': 'Gaji',
+                    'sewa': 'Sewa',
+                    'utilitas': 'Utilitas',
+                    'transport': 'Transport',
+                    'marketing': 'Marketing',
+                    'lainnya-out': 'Pengeluaran Lainnya'
+                }[cf.category];
+
+                csv += `${cf.date},${catLabel},${cf.description},`;
+                csv += cf.type === 'in' ? `${cf.amount},0\n` : `0,${cf.amount}\n`;
+            });
+
+            // Add summary
+            const totalIn = filtered.filter(cf => cf.type === 'in').reduce((sum, cf) => sum + cf.amount, 0);
+            const totalOut = filtered.filter(cf => cf.type === 'out').reduce((sum, cf) => sum + cf.amount, 0);
+            csv += `\nTOTAL,,${totalIn},${totalOut}\n`;
+            csv += `SALDO,,,${totalIn - totalOut}\n`;
+
+            const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+            const link = document.createElement('a');
+            link.href = URL.createObjectURL(blob);
+            link.download = `cashflow_${filterMonth || 'semua'}_${new Date().toISOString().split('T')[0]}.csv`;
+            link.click();
+        }
+    </script>
+</body>
+</html>
